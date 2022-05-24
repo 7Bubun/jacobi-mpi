@@ -1,17 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
+#include "headers.h"
 
 #define ARG_NUM_ERROR_CODE 1
-#define FILE_OPENING_ERROR_CODE 2
-#define FILE_READING_ERROR_CODE 3
 
-
-void exit_with_error(const char *message, const int exit_code) {
-    fprintf(stderr, "%s\n", message);
-    MPI_Finalize();
-    exit(exit_code);
-}
 
 //args: A filename, b filename, number of iterations
 int main(int argc, char *argv[]) {
@@ -26,47 +19,13 @@ int main(int argc, char *argv[]) {
     int matrix_size, rows_count;
 
     if(rank == 0) {
-        FILE *f;
-        int i, j;
+        int i;
         
         if(argc != 4)
             exit_with_error("Niepoprawna liczba argumentow\n", ARG_NUM_ERROR_CODE);
         
-        if((f = fopen(argv[1], "r")) == NULL)
-            exit_with_error("Nie udalo sie otworzyc pliku z macierza A.\n", FILE_OPENING_ERROR_CODE);
-
-        if(fscanf(f, "%d\n\n", &matrix_size) != 1)
-            exit_with_error("Nie udalo sie wczytac rozmiaru macierzy A.\n", FILE_READING_ERROR_CODE);
-
-        A = (double*) malloc(matrix_size * matrix_size * sizeof(double));
-
-        for(i = 0; i < matrix_size; i++) {
-            for(j = 0; j < matrix_size; j++) {
-                if((fscanf(f, "%lf\n", &A[i * matrix_size + j]) != 1)) {
-                    free(A);
-                    exit_with_error("Nie udalo sie wczytac zawartosci macierzy A.\n", FILE_READING_ERROR_CODE);
-                }
-            }
-        }
-
-        fclose(f);
-
-        if((f = fopen(argv[2], "r")) == NULL) {
-            free(A);
-            exit_with_error("Nie udalo sie otworzyc pliku z wektorem b.\n", FILE_OPENING_ERROR_CODE); 
-        }
-
-        b = (double*) malloc(matrix_size * sizeof(double));
-
-        for(i = 0; i < matrix_size; i++) {
-            if((fscanf(f, "%lf\n", &b[i])) != 1) {
-                free(A);
-                free(b);
-                exit_with_error("Nie udalo sie wczytac zawartosci wektora b.\n", FILE_READING_ERROR_CODE);
-            }
-        }
-
-        fclose(f);
+        A = read_matrix(argv[1], &matrix_size);
+        b = read_vector(argv[2], matrix_size, A);
 
         A_counts = (int*) malloc(comm_size * sizeof(int));
         A_displacements = (int*) malloc(comm_size * sizeof(int));
@@ -79,6 +38,7 @@ int main(int argc, char *argv[]) {
 
         A_counts[0] = (rows_count + r) * matrix_size;
         b_counts[0] = rows_count + r;
+
         A_displacements[0] = 0;
         b_displacements[0] = 0;
 
