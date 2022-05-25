@@ -59,9 +59,7 @@ int main(int argc, char *argv[])
                 I_minus_diag_inv_A[i * matrix_size + j] = -diag_inv[i] * A[i * matrix_size + j];
 
                 if (i == j)
-                {
                     I_minus_diag_inv_A[i * matrix_size + j]++; // should be = 0
-                }
             }
         }
 
@@ -73,9 +71,7 @@ int main(int argc, char *argv[])
     double *X = (double *)malloc(matrix_size * sizeof(double));
 
     if (rank == 0)
-    {
         memcpy(X, diag_inv_times_b, matrix_size * sizeof(double));
-    }
 
     double err = 1000000.0;
     int i;
@@ -89,9 +85,7 @@ int main(int argc, char *argv[])
         if (rank == 0)
         {
             for (int j = 0; j < matrix_size; j++)
-            {
                 X[j] += diag_inv_times_b[j];
-            }
         }
 
         free(part_of_result);
@@ -124,7 +118,7 @@ int main(int argc, char *argv[])
         printf("Wynik:\n");
 
         for (i = 0; i < matrix_size; i++)
-            printf("%lf\n", X[i]);
+            printf("%0.8lf\n", X[i]);
     }
 
     if (rank == 0)
