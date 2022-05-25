@@ -59,8 +59,7 @@ double *multiply_submatrix_and_vector(double *submatrix, int matrix_size, double
     return result_vector;
 }
 
-double *gather_subvectors(double *result_vector, int matrix_size, int *counts, int *displacements, int rank, int comm_size) {
-    double *final_result = rank == 0 ? (double*) malloc(matrix_size * sizeof(double)) : NULL;
+void gather_subvectors(double *subvector, double *final_result, int matrix_size, int *counts, int *displacements, int rank, int comm_size) {
     int i;
 
     for(i = 0; i < comm_size; i++) {
@@ -68,6 +67,5 @@ double *gather_subvectors(double *result_vector, int matrix_size, int *counts, i
         displacements[i] /= matrix_size;
     }
 
-    MPI_Gatherv(result_vector, counts[rank], MPI_DOUBLE, final_result, counts, displacements, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    return final_result;
+    MPI_Gatherv(subvector, counts[rank], MPI_DOUBLE, final_result, counts, displacements, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }

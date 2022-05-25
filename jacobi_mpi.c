@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     //test start
     double *submatrix = divide_matrix_into_submatrixes(A, matrix_size, counts, displacements, rank, comm_size);
     double *part_of_result = multiply_submatrix_and_vector(submatrix, matrix_size, b, counts, displacements, rank, comm_size);
-    double *result = gather_subvectors(part_of_result, matrix_size, counts, displacements, rank, comm_size);
+    gather_subvectors(part_of_result, b, matrix_size, counts, displacements, rank, comm_size);
 
     if(rank == 0) {
         int i;
@@ -44,9 +44,7 @@ int main(int argc, char *argv[]) {
         printf("Wynik:\n");
 
         for(i = 0; i < matrix_size; i++)
-            printf("%lf\n", result[i]);
-
-        free(result);
+            printf("%lf\n", b[i]);
     }
 
     free(part_of_result);

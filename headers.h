@@ -11,6 +11,6 @@ double *divide_matrix_into_submatrixes(double *matrix, int matrix_size, int *cou
 
 double *multiply_submatrix_and_vector(double *submatrix, int matrix_size, double *vector, int *counts, int *displacements, int rank, int comm_size);
 
-double *gather_subvectors(double *result_vector, int matrix_size, int *counts, int *displacements, int rank, int comm_size);
+void gather_subvectors(double *result_vector, double *final_result, int matrix_size, int *counts, int *displacements, int rank, int comm_size);
 
 #endif
