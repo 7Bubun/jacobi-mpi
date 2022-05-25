@@ -27,25 +27,38 @@ int main(int argc, char *argv[]) {
 
     MPI_Bcast(&matrix_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
+    if(rank != 0)
+        b = (double*) malloc(matrix_size * sizeof(double));
+
+    int *displacements = (int*) malloc(comm_size * sizeof(int));
+    int *counts = (int*) malloc(comm_size * sizeof(int));
+
     //test start
-    double *test = multiply_matrix_and_vector_paralell(A, matrix_size, b, rank, comm_size);
-
-    if(rank == 0){
-        printf("Wynik mnozenia:\n");
-
-        int i;
-        for(i = 0; i < matrix_size; i++)
-            printf("%lf\n", test[i]);
-    }
-    
-    //test end
+    double *submatrix = divide_matrix_into_submatrixes(A, matrix_size, counts, displacements, rank, comm_size);
+    double *part_of_result = multiply_submatrix_and_vector(submatrix, matrix_size, b, counts, displacements, rank, comm_size);
+    double *result = gather_subvectors(part_of_result, matrix_size, counts, displacements, rank, comm_size);
 
     if(rank == 0) {
-       free(A);
-       free(b);
-       free(test);
+        int i;
+
+        printf("Wynik:\n");
+
+        for(i = 0; i < matrix_size; i++)
+            printf("%lf\n", result[i]);
+
+        free(result);
     }
 
+    free(part_of_result);
+    free(submatrix);
+    //test end
+
+    if(rank == 0)
+       free(A);
+
+    free(b);
+    free(displacements);
+    free(counts);
     MPI_Finalize();
     return 0;
 }

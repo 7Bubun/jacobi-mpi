@@ -10,27 +10,17 @@ void exit_with_error(const char *message, const int exit_code) {
     exit(exit_code);
 }
 
-double *multiply_matrix_and_vector_paralell(double *A, int A_size, double *B, int rank, int comm_size) {
-    int *counts, *displacements;
-    double *final_result;
-    int i, j, k;
-
-    displacements = (int*) malloc(comm_size * sizeof(int));
+double *divide_matrix_into_submatrixes(double *matrix, int matrix_size, int *counts, int *displacements, int rank, int comm_size) {
+    int i;
 
     if(rank == 0) {
-        int part_length = (int) (A_size / comm_size);
-        counts = (int*) malloc(comm_size * sizeof(int));
+        int part_length = (int) (matrix_size / comm_size);
 
-        for(i = 0; i < comm_size; i++) {
-            counts[i] = part_length * A_size;
-        }
+        for(i = 0; i < comm_size; i++)
+            counts[i] = part_length * matrix_size;
 
-        i = 0;
-
-        while(A_size % (part_length * comm_size + i) != 0) {
-            counts[i % comm_size] += A_size;
-            i++;
-        }
+        for(i = 0; matrix_size % (part_length * comm_size + i) != 0; i++)
+            counts[i % comm_size] += matrix_size;
 
         int amount = 0;
         displacements[0] = 0;
@@ -39,59 +29,45 @@ double *multiply_matrix_and_vector_paralell(double *A, int A_size, double *B, in
             amount += counts[i - 1];
             displacements[i] = amount;
         }
-
-    } else {
-        B = (double*) malloc(A_size * sizeof(double));
     }
 
-    int *ones = (int*) malloc(comm_size * sizeof(int));
-    int *disps = (int*) malloc(comm_size * sizeof(int));
-
-    for(i = 0; i < comm_size; i++) {
-        ones[i] = 1;
-        disps[i] = i;
-    }
-
+    MPI_Bcast(counts, comm_size, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(displacements, comm_size, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(B, A_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    int total_size = rank == comm_size - 1 ? A_size * A_size - displacements[rank] : displacements[rank + 1] - displacements[rank];
+    int total_size = rank == comm_size - 1 ? matrix_size * matrix_size - displacements[rank] : displacements[rank + 1] - displacements[rank];
     double *A_fragment = (double*) malloc(total_size * sizeof(double));
 
-    MPI_Scatterv(A, counts, displacements, MPI_DOUBLE, A_fragment, total_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    
-    double *result_vector = (double*) malloc(A_size * sizeof(double));
-    int end = rank == comm_size - 1 ? A_size : displacements[rank + 1] / A_size;
+    MPI_Scatterv(matrix, counts, displacements, MPI_DOUBLE, A_fragment, total_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    return A_fragment;
+}
 
-    for(i = displacements[rank] / A_size; i < end; i++) {
+double *multiply_submatrix_and_vector(double *submatrix, int matrix_size, double *vector, int *counts, int *displacements, int rank, int comm_size) {
+    double *result_vector = (double*) malloc(matrix_size * sizeof(double));
+    int i, j;
+
+    MPI_Bcast(vector, matrix_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    for(i = 0; i < counts[rank] / matrix_size; i++) {
         double sum = 0.0;
-        k = i - displacements[rank] / A_size;
         
-        for(j = 0; j < A_size; j++)
-            sum += A_fragment[k * A_size + j] * B[j];
+        for(j = 0; j < matrix_size; j++)
+            sum += submatrix[i * matrix_size + j] * vector[j];
 
-        result_vector[k] = sum;
+        result_vector[i] = sum;
     }
 
-    if(rank == 0) {
-        final_result = (double*) malloc(A_size * sizeof(double));
+    return result_vector;
+}
 
-        for(i = 0; i < comm_size; i++) {
-            counts[i] /= A_size;
-            displacements[i] /= A_size;
-        }
+double *gather_subvectors(double *result_vector, int matrix_size, int *counts, int *displacements, int rank, int comm_size) {
+    double *final_result = rank == 0 ? (double*) malloc(matrix_size * sizeof(double)) : NULL;
+    int i;
+
+    for(i = 0; i < comm_size; i++) {
+        counts[i] /= matrix_size;
+        displacements[i] /= matrix_size;
     }
 
-    MPI_Gatherv(result_vector, k + 1, MPI_DOUBLE, final_result, counts, displacements, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    if(rank == 0)
-        free(counts);
-
-    free(displacements);
-    free(ones);
-    free(disps);
-    free(A_fragment);
-    free(result_vector);
-
+    MPI_Gatherv(result_vector, counts[rank], MPI_DOUBLE, final_result, counts, displacements, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     return final_result;
 }
