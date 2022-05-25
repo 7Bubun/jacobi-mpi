@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
+#include <string.h>
 #include "headers.h"
 
 
@@ -61,11 +62,15 @@ double *multiply_submatrix_and_vector(double *submatrix, int matrix_size, double
 
 void gather_subvectors(double *subvector, double *final_result, int matrix_size, int *counts, int *displacements, int rank, int comm_size) {
     int i;
-
+    int *counts_cpy = malloc(comm_size * sizeof(int));
+    int *displacements_cpy = malloc(comm_size * sizeof(int));
+    memcpy(counts_cpy, counts, comm_size * sizeof(int));
+    memcpy(displacements_cpy, displacements, comm_size * sizeof(int));
+    
     for(i = 0; i < comm_size; i++) {
-        counts[i] /= matrix_size;
-        displacements[i] /= matrix_size;
+        counts_cpy[i] /= matrix_size;
+        displacements_cpy[i] /= matrix_size;
     }
 
-    MPI_Gatherv(subvector, counts[rank], MPI_DOUBLE, final_result, counts, displacements, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(subvector, counts_cpy[rank], MPI_DOUBLE, final_result, counts_cpy, displacements_cpy, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }

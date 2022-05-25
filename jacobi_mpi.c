@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
+#include <string.h>
+#include <math.h>
 #include "headers.h"
 
 #define ARG_NUM_ERROR_CODE 1
+#define MAX_ERR 1e-9
 
 
 //args: A filename, b filename, number of iterations
@@ -32,24 +35,67 @@ int main(int argc, char *argv[]) {
 
     int *displacements = (int*) malloc(comm_size * sizeof(int));
     int *counts = (int*) malloc(comm_size * sizeof(int));
-
-    //test start
-    double *submatrix = divide_matrix_into_submatrixes(A, matrix_size, counts, displacements, rank, comm_size);
-    double *part_of_result = multiply_submatrix_and_vector(submatrix, matrix_size, b, counts, displacements, rank, comm_size);
-    gather_subvectors(part_of_result, b, matrix_size, counts, displacements, rank, comm_size);
-
+    double *I_minus_diag_inv_A; 
+    double *diag_inv_times_b;
     if(rank == 0) {
-        int i;
+    	double *diag_inv = (double*) malloc(matrix_size * sizeof(double));
+    	diag_inv_times_b = (double*) malloc(matrix_size * sizeof(double));
+    	I_minus_diag_inv_A = (double*) malloc(matrix_size * matrix_size * sizeof(double));
+    	for(int i = 0; i < matrix_size; i++){
+    		diag_inv[i] = 1 / A[i + i * matrix_size];
+    		diag_inv_times_b[i] = diag_inv[i] * b[i];
+    	}
+    	for(int i = 0; i < matrix_size; i++){
+    		for(int j = 0; j < matrix_size; j++){
+    			I_minus_diag_inv_A[i * matrix_size + j] = - diag_inv[i] * A[i * matrix_size + j];
+    			if(i == j){
+    				I_minus_diag_inv_A[i * matrix_size + j]++; // should be = 0
+    			}
+    		}
+    	}
+    }
+    
+    double *submatrix = divide_matrix_into_submatrixes(I_minus_diag_inv_A, matrix_size, counts, displacements, rank, comm_size);
+    double *submatrix2 = divide_matrix_into_submatrixes(A, matrix_size, counts, displacements, rank, comm_size);
+    
+    double *X = (double*) malloc(matrix_size * sizeof(double));
+    if(rank == 0){
+    	memcpy(X, diag_inv_times_b, matrix_size * sizeof(double));
+    }
+    double err = 1000000.0;
+    int i;
+    for(i = 1; i < atoi(argv[3]) && err > MAX_ERR; i++){
+    	MPI_Bcast(X, matrix_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    	double *part_of_result = multiply_submatrix_and_vector(submatrix, matrix_size, X, counts, displacements, rank, comm_size);
+    	gather_subvectors(part_of_result, X, matrix_size, counts, displacements, rank, comm_size);
+    	if(rank == 0){
+	    	for(int j = 0; j < matrix_size; j++){
+	    		X[j] += diag_inv_times_b[j];
+	    	}
+	}
+	if( i % 5 == 0){
+		double *R = (double*) malloc(matrix_size * sizeof(double));
+		double *part_of_result2 = multiply_submatrix_and_vector(submatrix2, matrix_size, X, counts, displacements, rank, comm_size);
+		gather_subvectors(part_of_result2, R, matrix_size, counts, displacements, rank, comm_size);
+		if(rank == 0){
+			err = 0.0;
+			for(int k = 0; k < matrix_size; k++){
+				err += pow(R[k] - b[k], 2);
+			}
+			err = sqrt(err);
+		}
+		MPI_Bcast(&err, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	}
+    }
+    
+    if(rank == 0) {
 
+	printf("Zakonczono po: %d iterajach.\n", i);
         printf("Wynik:\n");
 
         for(i = 0; i < matrix_size; i++)
-            printf("%lf\n", b[i]);
+            printf("%lf\n", X[i]);
     }
-
-    free(part_of_result);
-    free(submatrix);
-    //test end
 
     if(rank == 0)
        free(A);
