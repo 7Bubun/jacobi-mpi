@@ -53,6 +53,8 @@ int main(int argc, char *argv[]) {
     			}
     		}
     	}
+
+        free(diag_inv);
     }
     
     double *submatrix = divide_matrix_into_submatrixes(I_minus_diag_inv_A, matrix_size, counts, displacements, rank, comm_size);
@@ -72,7 +74,11 @@ int main(int argc, char *argv[]) {
 	    	for(int j = 0; j < matrix_size; j++){
 	    		X[j] += diag_inv_times_b[j];
 	    	}
+
 	}
+
+    free(part_of_result);
+
 	if( i % 5 == 0){
 		double *R = (double*) malloc(matrix_size * sizeof(double));
 		double *part_of_result2 = multiply_submatrix_and_vector(submatrix2, matrix_size, X, counts, displacements, rank, comm_size);
@@ -84,6 +90,9 @@ int main(int argc, char *argv[]) {
 			}
 			err = sqrt(err);
 		}
+
+        free(R);
+        free(part_of_result2);
 		MPI_Bcast(&err, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	}
     }
@@ -97,9 +106,15 @@ int main(int argc, char *argv[]) {
             printf("%lf\n", X[i]);
     }
 
-    if(rank == 0)
-       free(A);
+    if(rank == 0) {
+        free(A);
+        free(diag_inv_times_b);
+        free(I_minus_diag_inv_A);
+    }
 
+    free(submatrix);
+    free(submatrix2);
+    free(X);
     free(b);
     free(displacements);
     free(counts);

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <mpi.h>
 #include <string.h>
+#include <mpi.h>
 #include "headers.h"
 
 
@@ -73,4 +73,6 @@ void gather_subvectors(double *subvector, double *final_result, int matrix_size,
     }
 
     MPI_Gatherv(subvector, counts_cpy[rank], MPI_DOUBLE, final_result, counts_cpy, displacements_cpy, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    free(counts_cpy);
+    free(displacements_cpy);
 }
