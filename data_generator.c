@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <mpi.h>
 
 int main(int argc, char *argv[])
 {
@@ -10,28 +11,47 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    FILE *f = fopen("generatedA.txt", "w");
-    int n = atoi(argv[1]);
-    int i, j;
+    MPI_Init(&argc, &argv);
 
-    fprintf(f, "%d\n\n", n);
+    FILE *f;
+    int rank;
 
-    srand(time(NULL));
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    for (i = 0; i < n; i++)
+    if (rank == 0)
     {
-        for (j = 0; j < n; j++)
+        f = fopen("generatedA.txt", "w");
+        int n = atoi(argv[1]);
+        int i, j;
+
+        fprintf(f, "%d\n\n", n);
+
+        srand(time(NULL));
+
+        for (i = 0; i < n; i++)
         {
-            double number = i == j ? 1000000.0 * ((double)rand() / RAND_MAX) + 500000 : 10 * ((double)rand() / RAND_MAX) - 5;
-            fprintf(f, "%lf\n", number);
+            for (j = 0; j < n; j++)
+            {
+                double number = i == j ? 1000000.0 * ((double)rand() / RAND_MAX) + 500000 : 10 * ((double)rand() / RAND_MAX) - 5;
+                fprintf(f, "%lf\n", number);
+            }
         }
+
+        fclose(f);
+    }
+    else if (rank == 1)
+    {
+        int n = atoi(argv[1]);
+        int i;
+
+        f = fopen("generatedB.txt", "w");
+
+        for (i = 0; i < n; i++)
+            fprintf(f, "%lf\n", 1000000.0 * ((double)rand() / RAND_MAX));
+
+        fclose(f);
     }
 
-    fclose(f);
-    f = fopen("generatedB.txt", "w");
-
-    for (i = 0; i < n; i++)
-        fprintf(f, "%lf\n", 1000000.0 * ((double)rand() / RAND_MAX));
-
-    fclose(f);
+    MPI_Finalize();
+    return 0;
 }
