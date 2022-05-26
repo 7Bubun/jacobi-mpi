@@ -1,9 +1,11 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-double *read_matrix(const char *filename, int *matrix_size);
+int read_matrix_size(const char *filename);
 
-double *read_vector(const char *filename, int vector_size, double *matrix);
+double *read_matrix(const char *filename, int matrix_size);
+
+double *read_vector(const char *filename, int vector_size);
 
 void exit_with_error(const char *message, const int exit_code);
 

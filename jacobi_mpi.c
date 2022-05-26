@@ -7,6 +7,7 @@
 #include "headers.h"
 
 #define ARG_NUM_ERROR_CODE 1
+#define TAG 7
 #define MAX_ERR 1e-9
 
 // args: A filename, b filename, number of iterations
@@ -31,17 +32,26 @@ int main(int argc, char *argv[])
         if (argc != 4)
             exit_with_error("Niepoprawna liczba argumentow\n", ARG_NUM_ERROR_CODE);
 
-        A = read_matrix(argv[1], &matrix_size);
-        b = read_vector(argv[2], matrix_size, A);
+        matrix_size = read_matrix_size(argv[1]);
+    }
+
+    MPI_Bcast(&matrix_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (rank == 0)
+    {
+        A = read_matrix(argv[1], matrix_size);
+        b = (double *)malloc(matrix_size * matrix_size * sizeof(double));
+        MPI_Recv(b, matrix_size, MPI_DOUBLE, 1, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+    else if (rank == 1)
+    {
+        b = read_vector(argv[2], matrix_size);
+        MPI_Send(b, matrix_size, MPI_DOUBLE, 0, TAG, MPI_COMM_WORLD);
+        free(b);
     }
 
     if (rank == 0)
         after_input = clock();
-
-    MPI_Bcast(&matrix_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-    if (rank != 0)
-        b = (double *)malloc(matrix_size * sizeof(double));
 
     int *displacements = (int *)malloc(comm_size * sizeof(int));
     int *counts = (int *)malloc(comm_size * sizeof(int));
@@ -138,6 +148,7 @@ int main(int argc, char *argv[])
     if (rank == 0)
     {
         free(A);
+        free(b);
         free(diag_inv_times_b);
         free(I_minus_diag_inv_A);
     }
@@ -145,7 +156,6 @@ int main(int argc, char *argv[])
     free(submatrix);
     free(submatrix2);
     free(X);
-    free(b);
     free(displacements);
     free(counts);
     MPI_Finalize();
