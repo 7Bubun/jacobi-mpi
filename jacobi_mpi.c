@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     double err = 1000000.0;
     int i;
 
-    for (i = 1; i < atoi(argv[3]) && err > MAX_ERR; i++)
+    for (i = 1; i < atoi(argv[3]) && err > MAX_ERR * matrix_size; i++)
     {
         MPI_Bcast(X, matrix_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         double *part_of_result = multiply_submatrix_and_vector(submatrix, matrix_size, X, counts, displacements, rank, comm_size);
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 
         free(part_of_result);
 
-        if (i % 5 == 0)
+        if (i % 10 == 0)
         {
             double *R = (double *)malloc(matrix_size * sizeof(double));
             double *part_of_result2 = multiply_submatrix_and_vector(submatrix2, matrix_size, X, counts, displacements, rank, comm_size);
@@ -114,11 +114,13 @@ int main(int argc, char *argv[])
 
     if (rank == 0)
     {
-        printf("Zakonczono po: %d iterajach.\n", i);
+        int old_i = i;
         printf("Wynik:\n");
 
         for (i = 0; i < matrix_size; i++)
             printf("%0.8lf\n", X[i]);
+
+        printf("Zakonczono po: %d iteracjach.\n", old_i);
     }
 
     if (rank == 0)

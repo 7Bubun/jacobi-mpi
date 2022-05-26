@@ -7,8 +7,7 @@
 void exit_with_error(const char *message, const int exit_code)
 {
     fprintf(stderr, "%s\n", message);
-    MPI_Finalize();
-    exit(exit_code);
+    MPI_Abort(MPI_COMM_WORLD, exit_code);
 }
 
 double *divide_matrix_into_submatrixes(double *matrix, int matrix_size, int *counts, int *displacements, int rank, int comm_size)
