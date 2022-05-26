@@ -23,10 +23,10 @@ double *read_matrix(const char *filename, int *matrix_size)
     {
         for (j = 0; j < matrix_size_value; j++)
         {
-            if ((fscanf(f, "%lf\n", &A[i * matrix_size_value + j]) != 1))
+            if ((fscanf(f, "%lf\n", &A[i * matrix_size_value + j]) != 1) || (i == j && A[i * matrix_size_value + j] == 0))
             {
                 free(A);
-                exit_with_error("Nie udalo sie wczytac zawartosci macierzy A.\n", FILE_READING_ERROR_CODE);
+                exit_with_error("Niepoprawny format macierzy A.\n", FILE_READING_ERROR_CODE);
             }
         }
     }
