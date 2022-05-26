@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 #include <mpi.h>
 #include "headers.h"
 
@@ -17,6 +18,11 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    clock_t start, after_input, end;
+
+    if (rank == 0)
+        start = clock();
+
     double *A, *b;
     int matrix_size;
 
@@ -28,6 +34,9 @@ int main(int argc, char *argv[])
         A = read_matrix(argv[1], &matrix_size);
         b = read_vector(argv[2], matrix_size, A);
     }
+
+    if (rank == 0)
+        after_input = clock();
 
     MPI_Bcast(&matrix_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
@@ -114,13 +123,16 @@ int main(int argc, char *argv[])
 
     if (rank == 0)
     {
+        end = clock();
         int old_i = i;
         printf("Wynik:\n");
 
         for (i = 0; i < matrix_size; i++)
             printf("%0.8lf\n", X[i]);
 
-        printf("Zakonczono po: %d iteracjach.\n", old_i);
+        printf("Zakonczono po %d iteracjach.\n", old_i);
+        printf("Czas dzialania programu: %lf s.\n", ((double)(end - start)) / CLOCKS_PER_SEC);
+        printf("Czas obliczen (czas dzialania programu bez czasu wczytywania danych): %lf s.\n", ((double)(end - after_input)) / CLOCKS_PER_SEC);
     }
 
     if (rank == 0)
